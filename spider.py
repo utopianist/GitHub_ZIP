@@ -2,7 +2,6 @@ import os
 import urllib.request
 import requests
 import re
-from bs4 import BeautifulSoup
 import zipfile
 
 
@@ -15,74 +14,45 @@ def getHTML(offset):
     except:
         print('链接失败!')
 
-
-def parsePage1(html,urllist,namelist):
-    pattern = re.compile('<h3>.*?<a href=.*?itemprop="name codeRepository">(.*?)</a>.*?</h3>', re.S)
+def parsePage(html,urllist):
+    pattern = re.compile('<h3>.*?<a itemprop="name codeRepository".*?>(.*?)</a>.*?</h3>', re.S)
     items = re.findall(pattern, html)
     for item in items:
-        zipurl = 'https://github.com/Python3WebSpider/' + item[9:] + '/archive/master.zip'
+        zipurl = 'https://github.com/Python3WebSpider/' + item[11:-1] + '/archive/master.zip'
         urllist.append(zipurl)
-        namelist.append(item[9:])
 
-
-def parsePage2(html, urllist, namelist):
-    soup = BeautifulSoup(html, 'html.parser')
-    data = soup.find_all('h3')
-    for item in data:
-        a = item('a')
-        for item in a:
-            print(item.string)
-            zipurl = 'https://github.com/Python3WebSpider/' + item[9:] + '/archive/master.zip'
-            urllist.append(zipurl)
-            namelist.append(item[9:])
-
-
-
-def downloadZip(urllist, namelist):
-    count = 0
-    dir = os.path.abspath('.')
+def downloadZip(urllist):
     for item in urllist:
-        if os.path.exists(os.path.join(dir, namelist[count] + '.zip')):
-            count = count +1
-        else:
+        itemName = re.search('WebSpider/(.*?)/archive', item).group(1)
+        codesPath = 'codes' + os.path.sep + itemName + '.zip'
+        if not os.path.exists(codesPath):
             try:
-                print('正在下载' + namelist[count])
-                work_path = os.path.join(dir, namelist[count] + '.zip')
-                urllib.request.urlretrieve(item,work_path)
-                count = count + 1
+                print('正在下载' + itemName)
+                urllib.request.urlretrieve(item,codesPath)
             except:
                 continue
 
 def unZip():
-    file_list = os.listdir(r'.')
-    for file_name in file_list:
-        if os.path.splitext(file_name)[1] == '.zip':
-            try:
-                print('正在尝试解压' + file_name)
-                file_zip = zipfile.ZipFile(file_name, 'r')
-                for file in file_zip.namelist():
-                    file_zip.extract(file, r'.')
-                file_zip.close()
-                os.remove(file_name)
-            except:
-                name = os.path.splitext(file_name)[0]
-                os.remove(file_name)
-                zipurl = 'https://github.com/Python3WebSpider/' + name + '/archive/master.zip'
-                try:
-                    print('正在下载' + name)
-                    work_path = os.path.join(dir, name + '.zip')
-                    urllib.request.urlretrieve(zipurl, work_path)
-                except:
-                    continue
-
+    fileList = os.listdir('codes')
+    for fileName in fileList:
+        filePath = 'codes' + os.path.sep + fileName
+        if os.path.splitext(fileName)[1] == '.zip':
+            print('正在尝试解压' + fileName)
+            file_zip = zipfile.ZipFile(filePath, 'r')
+            for file in file_zip.namelist():
+                file_zip.extract(file, 'codes') #选择保存路径 codes
+            file_zip.close()
+            os.remove(filePath)
 
 def main():
     urllist = []
-    namelist = []
     html = getHTML(1)
-    parsePage1(html, urllist, namelist)
-    downloadZip(urllist, namelist)
+    parsePage(html, urllist)
+    downloadZip(urllist)
     unZip()
 
 
-main()
+if __name__ == '__main__':
+    if not os.path.exists('codes'):
+        os.mkdir('codes')
+    main()
